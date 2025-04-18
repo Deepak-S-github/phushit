@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String _baseUrl = 'http:///:5000/predict'; // <-- replace X.X with your PC's IP
+  static const String _baseUrl = 'http://:5000/predict'; // <-- replace X.X with your PC's IP
 
   static Future<String> scanUrl(String url) async {
     print('🚀 Sending URL to server: $url');
