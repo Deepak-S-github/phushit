@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:phishnet_app/services/api_service.dart';
-import 'package:phishnet_app/widgets/score_bar.dart';
-import 'news_screen.dart';
+import 'package:phishnet_app/screens/scan_history.dart';
+import 'package:phishnet_app/screens/result_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class HomeScreen extends StatefulWidget {
   final Function(bool) toggleTheme;
@@ -17,205 +19,156 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _urlController = TextEditingController();
-  String? result;
   bool isLoading = false;
-
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _fadeController =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
-    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut);
-  }
-
-  @override
-  void dispose() {
-    _urlController.dispose();
-    _fadeController.dispose();
-    super.dispose();
-  }
 
   Future<void> scanUrl() async {
     FocusScope.of(context).unfocus();
-    setState(() {
-      isLoading = true;
-      result = null;
-    });
+    setState(() => isLoading = true);
 
     final response = await ApiService.scanUrl(_urlController.text);
+    await saveToHistory(_urlController.text, response);
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    setState(() {
-      result = response;
-      isLoading = false;
-    });
+    setState(() => isLoading = false);
 
-    _fadeController.forward(from: 0); // Trigger animation
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ResultScreen(
+          url: _urlController.text,
+          result: response,
+        ),
+      ),
+    );
+  }
+
+  Future<void> saveToHistory(String url, String result) async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String> history = prefs.getStringList('scanHistory') ?? [];
+
+    final newItem = json.encode({'url': url, 'result': result});
+    history.insert(0, newItem); // Add newest first
+
+    if (history.length > 50) history.removeLast(); // Optional: Limit history
+
+    await prefs.setStringList('scanHistory', history);
+  }
+
+  Widget glowingContainer({required Widget child, Color color = Colors.cyan, double blur = 30}) {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.6),
+            blurRadius: blur,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: child,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text("PhishNet 🔐"),
+        title: const Text("PhishNet"),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: true,
         actions: [
           Switch(
             value: widget.isDarkMode,
             onChanged: widget.toggleTheme,
-            activeColor: Colors.greenAccent,
-          )
+            activeColor: Colors.cyanAccent,
+          ),
+          const SizedBox(width: 12),
         ],
       ),
       body: Stack(
         children: [
-          // 🌊 Background Gradient
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF89F7FE), Color(0xFF66A6FF)],
+                colors: [Color(0xFF000000), Color(0xFF0f0f0f)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
           ),
           SafeArea(
-            child: SingleChildScrollView(
+            child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeInOut,
-                    decoration: BoxDecoration(
-                      color: theme.cardColor.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 15,
-                          offset: const Offset(0, 6),
+                  glowingContainer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.cyanAccent.withOpacity(0.6)),
+                      ),
+                      child: TextField(
+                        controller: _urlController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.link, color: Colors.cyanAccent),
+                          hintText: "Enter website URL",
+                          hintStyle: TextStyle(color: Colors.white70),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(16),
                         ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: TextField(
-                      controller: _urlController,
-                      decoration: const InputDecoration(
-                        labelText: "🔗 Enter website URL",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.link),
                       ),
                     ),
                   ),
                   const SizedBox(height: 30),
-
-                  // 🚀 Scan Button
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    height: 55,
-                    width: isLoading ? 55 : double.infinity,
+                  glowingContainer(
+                    color: Colors.purpleAccent,
                     child: ElevatedButton(
                       onPressed: isLoading ? null : scanUrl,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurpleAccent,
+                        backgroundColor: Colors.purpleAccent,
+                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(isLoading ? 30 : 14),
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                        elevation: 5,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
                       ),
                       child: isLoading
-                          ? const CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2)
-                          : const Text("🚨 Scan Now",
-                              style:
-                                  TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              "Scan",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // 📰 News Button
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.newspaper_outlined),
-                    label: const Text("Scan History & News"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orangeAccent,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NewsScreen(),
+                  glowingContainer(
+                    color: Colors.orangeAccent,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ScanHistoryScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.history, color: Colors.black),
+                      label: const Text(
+                        "View Scan History",
+                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orangeAccent,
+                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 30),
-
-                  // 🧠 Result Display
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: result != null
-                        ? Column(
-                            children: [
-                              ScoreBar(result: result!),
-                              const SizedBox(height: 20),
-                              Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: result == "Phishing"
-                                      ? Colors.red.shade50
-                                      : Colors.green.shade50,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: result == "Phishing"
-                                        ? Colors.red
-                                        : Colors.green,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      result == "Phishing"
-                                          ? Icons.warning
-                                          : Icons.verified,
-                                      color: result == "Phishing"
-                                          ? Colors.red
-                                          : Colors.green,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      result!,
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: result == "Phishing"
-                                            ? Colors.red
-                                            : Colors.green,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          )
-                        : const SizedBox.shrink(),
+                      ),
+                    ),
                   ),
                 ],
               ),
