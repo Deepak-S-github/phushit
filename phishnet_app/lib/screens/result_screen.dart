@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:phishnet_app/screens/scan_history.dart';
+import 'package:phishnet_app/screens/home_screen.dart'; // ⬅️ Import HomeScreen
 
 class ResultScreen extends StatelessWidget {
   final String url;
@@ -15,86 +17,128 @@ class ResultScreen extends StatelessWidget {
     final isPhishing = result == "Phishing";
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text("Scan Result"),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        backgroundColor: Colors.black,
         actions: [
           IconButton(
             icon: const Icon(Icons.history, color: Colors.cyanAccent),
             onPressed: () {
-              // TODO: Navigate to Scan History
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ScanHistoryScreen(),
+                ),
+              );
             },
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF000000), Color(0xFF0f0f0f)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+      backgroundColor: Colors.black,
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // URL Box
+            ResultBox(
+              title: "Scanned URL",
+              content: url,
+              color: Colors.blueGrey.shade800,
             ),
-          ),
-          Center(
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: LinearGradient(
-                  colors: isPhishing
-                      ? [Colors.redAccent.shade200, Colors.red.shade900]
-                      : [Colors.greenAccent, Colors.green],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isPhishing ? Colors.redAccent : Colors.greenAccent,
-                    blurRadius: 30,
-                    spreadRadius: 2,
-                  )
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isPhishing ? Icons.warning_amber : Icons.verified,
-                    size: 60,
-                    color: Colors.black,
+            const SizedBox(height: 16),
+            // Result Box
+            ResultBox(
+              title: "Result",
+              content: isPhishing
+                  ? "⚠️ Phishing Site Detected"
+                  : "✅ Safe Website",
+              color: isPhishing ? Colors.red.shade700 : Colors.green.shade700,
+              icon: isPhishing ? Icons.warning_amber : Icons.verified,
+            ),
+            const SizedBox(height: 24),
+            // Buttons
+            GlassMorphismButton(
+              text: "Go to Scan History",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ScanHistoryScreen(),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    url,
-                    textAlign: TextAlign.center,
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            GlassMorphismButton(
+              text: "Back to Home",
+              onPressed: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => HomeScreen(
+                      toggleTheme: (value) {}, // 🔧 Replace with actual function if needed
+                      isDarkMode: true,        // ✅ Set based on your app theme
+                    ),
+                  ),
+                  (route) => false,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ResultBox extends StatelessWidget {
+  final String title;
+  final String content;
+  final Color color;
+  final IconData? icon;
+
+  const ResultBox({
+    super.key,
+    required this.title,
+    required this.content,
+    required this.color,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color.withAlpha((0.2 * 255).toInt()),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: color, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: Colors.white),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
                     style: const TextStyle(
-                      fontSize: 16,
                       color: Colors.white70,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    isPhishing
-                        ? "⚠️ Phishing Site Detected"
-                        : "✅ Safe Website",
+                      fontSize: 14,
+                    )),
+                const SizedBox(height: 4),
+                Text(content,
                     style: const TextStyle(
-                      fontSize: 20,
+                      color: Colors.white,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  GlassMorphismButton(
-                    text: "Go to Scan History",
-                    onPressed: () {
-                      // TODO: Navigate to Scan History screen
-                    },
-                  ),
-                ],
-              ),
+                    )),
+              ],
             ),
           ),
         ],
@@ -117,31 +161,21 @@ class GlassMorphismButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-        backgroundColor: Colors.transparent,
-        side: BorderSide(
-          color: const Color.fromARGB(255, 65, 14, 75).withOpacity(0.3),
-        ),
+        backgroundColor: Colors.white.withAlpha((0.1 * 255).toInt()),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30),
         ),
         elevation: 5,
-        shadowColor: const Color.fromARGB(255, 161, 20, 236).withOpacity(0.2),
+        shadowColor: Colors.pinkAccent.withAlpha((0.4 * 255).toInt()),
       ),
       onPressed: onPressed,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
-          color: const Color.fromARGB(255, 68, 181, 201).withOpacity(0.1),
-        ),
-        padding: const EdgeInsets.all(8),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Color.fromARGB(255, 245, 53, 158),
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.cyanAccent,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

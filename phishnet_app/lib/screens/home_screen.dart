@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:phishnet_app/services/api_service.dart';
 import 'package:phishnet_app/screens/scan_history.dart';
-import 'package:phishnet_app/screens/result_screen.dart';
+import 'package:phishnet_app/screens/result_screen.dart' hide ScanHistoryScreen;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
