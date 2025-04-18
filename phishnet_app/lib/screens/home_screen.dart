@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:phishnet_app/services/api_service.dart';
 import 'package:phishnet_app/screens/scan_history.dart';
-import 'package:phishnet_app/screens/result_screen.dart' hide ScanHistoryScreen;
+import 'package:phishnet_app/screens/result_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -9,11 +9,7 @@ class HomeScreen extends StatefulWidget {
   final Function(bool) toggleTheme;
   final bool isDarkMode;
 
-  const HomeScreen({
-    super.key,
-    required this.toggleTheme,
-    required this.isDarkMode,
-  });
+  const HomeScreen({super.key, required this.toggleTheme, required this.isDarkMode});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -22,8 +18,22 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _urlController = TextEditingController();
   bool isLoading = false;
+  String errorMessage = ''; // To store the error message for empty field
 
   Future<void> scanUrl() async {
+    if (_urlController.text.isEmpty) {
+      // Set the error message if the field is empty
+      setState(() {
+        errorMessage = 'Please enter a URL.';
+      });
+      return;
+    }
+
+    // Reset error message if the input is valid
+    setState(() {
+      errorMessage = '';
+    });
+
     FocusScope.of(context).unfocus();
     setState(() => isLoading = true);
 
@@ -90,12 +100,18 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF000000), Color(0xFF0f0f0f)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+            decoration: BoxDecoration(
+              gradient: widget.isDarkMode
+                  ? const LinearGradient(
+                      colors: [Color(0xFF121212), Color(0xFF212121)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : const LinearGradient(
+                      colors: [Colors.white, Colors.grey],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
             ),
           ),
           SafeArea(
@@ -103,33 +119,57 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
+                  const Text(
+                    'Enter a website URL to check for phishing threats:',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   glowingContainer(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.3),
+                        color: widget.isDarkMode
+                            ? Colors.black.withOpacity(0.6)
+                            : Colors.white.withOpacity(0.8),
                         borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.cyanAccent.withOpacity(0.6)),
+                        border: Border.all(
+                          color: widget.isDarkMode
+                              ? Colors.cyanAccent.withOpacity(0.8)
+                              : Colors.blue.withOpacity(0.6),
+                        ),
                       ),
                       child: TextField(
                         controller: _urlController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.link, color: Colors.cyanAccent),
+                        style: TextStyle(
+                          color: widget.isDarkMode ? Colors.white : Colors.black,
+                        ),
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(
+                            Icons.link,
+                            color: widget.isDarkMode ? Colors.cyanAccent : Colors.blue,
+                          ),
                           hintText: "Enter website URL",
-                          hintStyle: TextStyle(color: Colors.white70),
+                          hintStyle: TextStyle(
+                            color: widget.isDarkMode ? Colors.white70 : Colors.black45,
+                          ),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.all(16),
+                          contentPadding: const EdgeInsets.all(16),
+                          errorText: errorMessage.isNotEmpty ? errorMessage : null, // Show error if empty
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 30),
                   glowingContainer(
-                    color: Colors.purpleAccent,
+                    color: widget.isDarkMode ? Colors.purpleAccent : Colors.blueAccent,
                     child: ElevatedButton(
                       onPressed: isLoading ? null : scanUrl,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purpleAccent,
+                        backgroundColor: widget.isDarkMode
+                            ? Colors.purpleAccent
+                            : Colors.blueAccent,
                         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
@@ -148,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 20),
                   glowingContainer(
-                    color: Colors.orangeAccent,
+                    color: widget.isDarkMode ? Colors.orangeAccent : Colors.orange,
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
@@ -156,13 +196,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           MaterialPageRoute(builder: (_) => const ScanHistoryScreen()),
                         );
                       },
-                      icon: const Icon(Icons.history, color: Colors.black),
-                      label: const Text(
+                      icon: Icon(
+                        Icons.history,
+                        color: widget.isDarkMode ? Colors.black : Colors.white,
+                      ),
+                      label: Text(
                         "View Scan History",
-                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: widget.isDarkMode ? Colors.black : Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orangeAccent,
+                        backgroundColor: widget.isDarkMode
+                            ? Colors.orangeAccent
+                            : Colors.orange,
                         padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
