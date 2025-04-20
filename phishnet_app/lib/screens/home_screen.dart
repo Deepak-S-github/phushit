@@ -18,27 +18,38 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _urlController = TextEditingController();
   bool isLoading = false;
-  String errorMessage = ''; // To store the error message for empty field
+  String errorMessage = '';
+
+  bool isValidURL(String url) {
+    final pattern = r'^(https?:\/\/)[^\s/$.?#].[^\s]*$';
+    final regex = RegExp(pattern, caseSensitive: false);
+    return regex.hasMatch(url.trim());
+  }
 
   Future<void> scanUrl() async {
-    if (_urlController.text.isEmpty) {
-      // Set the error message if the field is empty
+    final url = _urlController.text.trim();
+
+    if (url.isEmpty) {
       setState(() {
         errorMessage = 'Please enter a URL.';
       });
       return;
     }
 
-    // Reset error message if the input is valid
+    if (!isValidURL(url)) {
+      showInvalidUrlDialog();
+      return;
+    }
+
     setState(() {
       errorMessage = '';
+      isLoading = true;
     });
 
     FocusScope.of(context).unfocus();
-    setState(() => isLoading = true);
 
-    final response = await ApiService.scanUrl(_urlController.text);
-    await saveToHistory(_urlController.text, response);
+    final response = await ApiService.scanUrl(url);
+    await saveToHistory(url, response);
 
     setState(() => isLoading = false);
 
@@ -48,8 +59,47 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => ResultScreen(
           url: _urlController.text,
           result: response,
+          isDarkMode: widget.isDarkMode,
+          toggleTheme: widget.toggleTheme,
         ),
       ),
+    );
+  }
+
+  void showInvalidUrlDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black87,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            "⚠ Invalid URL",
+            style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Please enter a full URL like:\nhttps://gov.in/",
+                style: TextStyle(color: Colors.white70),
+              ),
+              SizedBox(height: 10),
+              Text(
+                "💡 Tip: Copy the full website URL from your browser (Chrome/Google) to ensure accuracy.",
+                style: TextStyle(color: Colors.cyanAccent),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: const Text("OK", style: TextStyle(color: Colors.cyanAccent)),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -58,9 +108,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<String> history = prefs.getStringList('scanHistory') ?? [];
 
     final newItem = json.encode({'url': url, 'result': result});
-    history.insert(0, newItem); // Add newest first
+    history.insert(0, newItem);
 
-    if (history.length > 50) history.removeLast(); // Optional: Limit history
+    if (history.length > 50) history.removeLast();
 
     await prefs.setStringList('scanHistory', history);
   }
@@ -156,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.all(16),
-                          errorText: errorMessage.isNotEmpty ? errorMessage : null, // Show error if empty
+                          errorText: errorMessage.isNotEmpty ? errorMessage : null,
                         ),
                       ),
                     ),
@@ -223,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
+),
+);
+}
 }
