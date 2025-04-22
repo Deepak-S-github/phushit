@@ -1,16 +1,14 @@
-document.getElementById("scanBtn").addEventListener("click", async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = tab.url;
-  
-    document.getElementById("result").textContent = "Scanning...";
-  
-    const response = await fetch("http://192.168.183.17/predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: url })
+document.getElementById("scanBtn").addEventListener("click", () => {
+  const url = document.getElementById("urlInput").value;
+  fetch("http://localhost:5000/predict", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ url })
+  })
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("result").textContent = `⚠️ Result: ${data.prediction.toUpperCase()} (${data.confidence || "Score unknown"})`;
     });
-  
-    const data = await response.json();
-    document.getElementById("result").textContent = `Result: ${data.result}`;
-  });
-  
+});

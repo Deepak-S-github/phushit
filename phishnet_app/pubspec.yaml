@@ -24,3 +24,7 @@ fonts:
     fonts:
       - asset: assets/fonts/SpaceGrotesk-Regular.ttf
  
+flutter:
+  assets:
+    - assets/model/phishing_model.json
+    - assets/model/scaler.json

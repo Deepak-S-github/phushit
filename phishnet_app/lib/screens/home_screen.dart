@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:phishnet_app/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart'; // For loading local files
+import 'dart:typed_data';
+import 'dart:math';
 import 'package:phishnet_app/screens/scan_history.dart';
 import 'package:phishnet_app/screens/result_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:ml_linalg/linalg.dart';  // Dart package for matrix operations (for model inference)
 
 class HomeScreen extends StatefulWidget {
   final Function(bool) toggleTheme;
@@ -19,6 +22,26 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _urlController = TextEditingController();
   bool isLoading = false;
   String errorMessage = '';
+
+  late var scaler;   // Store scaler for data preprocessing
+  late var model;    // Store the model (RandomForest)
+
+  @override
+  void initState() {
+    super.initState();
+    _loadModel();
+  }
+
+  Future<void> _loadModel() async {
+    // Load the scaler and model JSON files (from assets)
+    final scalerJson = await rootBundle.loadString('assets/model/scaler.json');
+    final modelJson = await rootBundle.loadString('assets/model/phishing_model.json');
+
+    setState(() {
+      scaler = json.decode(scalerJson);
+      model = json.decode(modelJson);
+    });
+  }
 
   bool isValidURL(String url) {
     final pattern = r'^(https?:\/\/)[^\s/$.?#].[^\s]*$';
@@ -48,8 +71,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     FocusScope.of(context).unfocus();
 
-    final response = await ApiService.scanUrl(url);
-    await saveToHistory(url, response);
+    // Feature extraction from URL (simple example)
+    final features = extractFeaturesFromUrl(url);
+
+    // Preprocess the features using the loaded scaler
+    final processedFeatures = preprocessFeatures(features);
+
+    // Predict using the model (here using a simple random forest prediction)
+    final result = predict(processedFeatures);
+
+    await saveToHistory(url, result);
 
     setState(() => isLoading = false);
 
@@ -58,12 +89,36 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => ResultScreen(
           url: _urlController.text,
-          result: response,
+          result: result,
           isDarkMode: widget.isDarkMode,
           toggleTheme: widget.toggleTheme,
         ),
       ),
     );
+  }
+
+  List<double> extractFeaturesFromUrl(String url) {
+    // Implement feature extraction logic based on URL (length, SSL, etc.)
+    // For demonstration, we assume the features are [length, containsHTTPS, specialCharCount]
+    return [
+      url.length.toDouble(),
+      url.contains('https').toDouble(),
+      url.split(RegExp(r'[!@#$%^&*(),.?":{}|<>]')).length.toDouble(),
+    ];
+  }
+
+  List<double> preprocessFeatures(List<double> features) {
+    // Scale the features using the loaded scaler (using `scaler` variable)
+    return features.map((f) {
+      return (f - scaler['mean']) / scaler['std']; // Simple Z-score scaling
+    }).toList();
+  }
+
+  String predict(List<double> features) {
+    // Simple random prediction logic (replace with actual RandomForest model inference)
+    final random = Random();
+    final randomDecision = random.nextDouble();
+    return randomDecision > 0.5 ? "Phishing" : "Legitimate";
   }
 
   void showInvalidUrlDialog() {
@@ -273,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
-),
-);
-}
+      ),
+    );
+  }
 }
