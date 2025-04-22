@@ -6,7 +6,6 @@ environment:
   sdk: '>=3.7.0 <4.0.0'
 
 dependencies:
- 
   flutter:
     sdk: flutter
   http: ^0.13.5
@@ -19,12 +18,11 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-fonts:
-  - family: SpaceGrotesk
-    fonts:
-      - asset: assets/fonts/SpaceGrotesk-Regular.ttf
- 
-flutter:
   assets:
     - assets/model/phishing_model.json
     - assets/model/scaler.json
+
+  fonts:
+    - family: SpaceGrotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-Regular.ttf
