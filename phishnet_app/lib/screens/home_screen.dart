@@ -1,279 +1,243 @@
 import 'package:flutter/material.dart';
-import 'package:phishnet_app/services/api_service.dart';
-import 'package:phishnet_app/screens/scan_history.dart';
-import 'package:phishnet_app/screens/result_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import '../theme/app_theme.dart';
+import '../widgets/bottom_navigation.dart';
 
 class HomeScreen extends StatefulWidget {
-  final Function(bool) toggleTheme;
-  final bool isDarkMode;
-
-  const HomeScreen({super.key, required this.toggleTheme, required this.isDarkMode});
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final TextEditingController _urlController = TextEditingController();
-  bool isLoading = false;
-  String errorMessage = '';
+  int _currentIndex = 0;
 
-  bool isValidURL(String url) {
-    final pattern = r'^(https?:\/\/)[^\s/$.?#].[^\s]*$';
-    final regex = RegExp(pattern, caseSensitive: false);
-    return regex.hasMatch(url.trim());
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'PHISHNET.AI',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Welcome Section
+              const Text(
+                'Welcome back!',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Stay protected from phishing attacks',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Quick Actions
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildQuickAction(
+                      icon: Icons.link_outlined,
+                      title: 'Scan URL',
+                      subtitle: 'Check web links',
+                      onTap: () => Navigator.pushNamed(context, '/scan'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildQuickAction(
+                      icon: Icons.email_outlined,
+                      title: 'Scan Email',
+                      subtitle: 'Check emails',
+                      onTap: () => Navigator.pushNamed(context, '/scan'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+
+              // Recent Activity
+              const Text(
+                'Recent Activity',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: 5,
+                  itemBuilder: (context, index) {
+                    return _buildActivityItem(
+                      title: 'Website scan completed',
+                      subtitle: 'google.com - Safe',
+                      time: '${index + 1}h ago',
+                      isPhishing: index == 2,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: BottomNavigation(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+          // Handle navigation based on index
+          switch (index) {
+            case 1:
+              Navigator.pushNamed(context, '/scan');
+              break;
+            case 2:
+              Navigator.pushNamed(context, '/history');
+              break;
+            case 3:
+              Navigator.pushNamed(context, '/settings');
+              break;
+          }
+        },
+      ),
+    );
   }
 
-  Future<void> scanUrl() async {
-    final url = _urlController.text.trim();
-
-    if (url.isEmpty) {
-      setState(() {
-        errorMessage = 'Please enter a URL.';
-      });
-      return;
-    }
-
-    if (!isValidURL(url)) {
-      showInvalidUrlDialog();
-      return;
-    }
-
-    setState(() {
-      errorMessage = '';
-      isLoading = true;
-    });
-
-    FocusScope.of(context).unfocus();
-
-    final response = await ApiService.scanUrl(url);
-    await saveToHistory(url, response);
-
-    setState(() => isLoading = false);
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ResultScreen(
-          url: _urlController.text,
-          result: response,
-          isDarkMode: widget.isDarkMode,
-          toggleTheme: widget.toggleTheme,
+  Widget _buildQuickAction({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.secondaryColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppTheme.accentColor.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: AppTheme.accentColor,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  void showInvalidUrlDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.black87,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            "⚠ Invalid URL",
-            style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
-          ),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Please enter a full URL like:\nhttps://gov.in/",
-                style: TextStyle(color: Colors.white70),
-              ),
-              SizedBox(height: 10),
-              Text(
-                "💡 Tip: Copy the full website URL from your browser (Chrome/Google) to ensure accuracy.",
-                style: TextStyle(color: Colors.cyanAccent),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: const Text("OK", style: TextStyle(color: Colors.cyanAccent)),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> saveToHistory(String url, String result) async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<String> history = prefs.getStringList('scanHistory') ?? [];
-
-    final newItem = json.encode({'url': url, 'result': result});
-    history.insert(0, newItem);
-
-    if (history.length > 50) history.removeLast();
-
-    await prefs.setStringList('scanHistory', history);
-  }
-
-  Widget glowingContainer({required Widget child, Color color = Colors.cyan, double blur = 30}) {
+  Widget _buildActivityItem({
+    required String title,
+    required String subtitle,
+    required String time,
+    required bool isPhishing,
+  }) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.6),
-            blurRadius: blur,
-            spreadRadius: 1,
-          ),
-        ],
+        color: AppTheme.secondaryColor,
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: child,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text("PhishNet"),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          Switch(
-            value: widget.isDarkMode,
-            onChanged: widget.toggleTheme,
-            activeColor: Colors.cyanAccent,
-          ),
-          const SizedBox(width: 12),
-        ],
-      ),
-      body: Stack(
+      child: Row(
         children: [
           Container(
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              gradient: widget.isDarkMode
-                  ? const LinearGradient(
-                      colors: [Color(0xFF121212), Color(0xFF212121)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : const LinearGradient(
-                      colors: [Colors.white, Colors.grey],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+              color: isPhishing 
+                ? Colors.red.withOpacity(0.2) 
+                : Colors.green.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(
+              isPhishing ? Icons.warning : Icons.check_circle,
+              color: isPhishing ? Colors.red : Colors.green,
+              size: 20,
             ),
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const Text(
-                    'Enter a website URL to check for phishing threats:',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textPrimary,
                   ),
-                  const SizedBox(height: 20),
-                  glowingContainer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: widget.isDarkMode
-                            ? Colors.black.withOpacity(0.6)
-                            : Colors.white.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: widget.isDarkMode
-                              ? Colors.cyanAccent.withOpacity(0.8)
-                              : Colors.blue.withOpacity(0.6),
-                        ),
-                      ),
-                      child: TextField(
-                        controller: _urlController,
-                        style: TextStyle(
-                          color: widget.isDarkMode ? Colors.white : Colors.black,
-                        ),
-                        decoration: InputDecoration(
-                          prefixIcon: Icon(
-                            Icons.link,
-                            color: widget.isDarkMode ? Colors.cyanAccent : Colors.blue,
-                          ),
-                          hintText: "Enter website URL",
-                          hintStyle: TextStyle(
-                            color: widget.isDarkMode ? Colors.white70 : Colors.black45,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.all(16),
-                          errorText: errorMessage.isNotEmpty ? errorMessage : null,
-                        ),
-                      ),
-                    ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
                   ),
-                  const SizedBox(height: 30),
-                  glowingContainer(
-                    color: widget.isDarkMode ? Colors.purpleAccent : Colors.blueAccent,
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : scanUrl,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: widget.isDarkMode
-                            ? Colors.purpleAccent
-                            : Colors.blueAccent,
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      child: isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              "Scan",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  glowingContainer(
-                    color: widget.isDarkMode ? Colors.orangeAccent : Colors.orange,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const ScanHistoryScreen()),
-                        );
-                      },
-                      icon: Icon(
-                        Icons.history,
-                        color: widget.isDarkMode ? Colors.black : Colors.white,
-                      ),
-                      label: Text(
-                        "View Scan History",
-                        style: TextStyle(
-                          color: widget.isDarkMode ? Colors.black : Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: widget.isDarkMode
-                            ? Colors.orangeAccent
-                            : Colors.orange,
-                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            time,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppTheme.textSecondary,
             ),
           ),
         ],
-),
-);
-}
+      ),
+    );
+  }
 }
